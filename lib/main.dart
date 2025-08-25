@@ -21,7 +21,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Phone Book',
-      theme: ThemeData(useMaterial3: true),
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
+      debugShowCheckedModeBanner: false,
       home: const ContactListScreen(),
     );
   }
