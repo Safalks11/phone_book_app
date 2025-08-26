@@ -146,22 +146,20 @@ await Supabase.initialize(url: Env.supabaseUrl, anonKey: Env.supabaseAnonKey);
 - Material 3 + Riverpod minimize rebuilds
 
 ## 🎥 Demo
-![App Demo](docs/screen_record/screen_record.gif)
+<img src="docs/screen_record/screen_record.gif" alt="App Demo" width="400"/>
 
+---
 
-## Screenshots
+## 📱 Screenshots
 
-### Add New Contact
-![Add Contact Screen](docs/screenshots/add_contact.png)
+| Add Contact | Contacts List |
+|-------------|---------------|
+| <img src="docs/screenshots/add_contact.png" alt="Add Contact" width="300"/> | <img src="docs/screenshots/contacts.png" alt="Contacts" width="300"/> |
 
-### Contacts List
-![Contacts Screen](docs/screenshots/contacts.png)
+| Edit Contact | Sort Contacts |
+|--------------|---------------|
+| <img src="docs/screenshots/edit_contact.png" alt="Edit Contact" width="300"/> | <img src="docs/screenshots/sort-contacts.png" alt="Sort Contacts" width="300"/> |
 
-### Edit Contact
-![Edit Contact Screen](docs/screenshots/edit_contact.png)
-
-### Sort Contact
-![Sort Contact Screen](docs/screenshots/sort-contacts.png)
-
-### Dark Mode
-![Dark Mode Screen](docs/screenshots/dark_mode.png)
+| Dark Mode |
+|-----------|
+| <img src="docs/screenshots/dark_mode.png" alt="Dark Mode" width="300"/> |
