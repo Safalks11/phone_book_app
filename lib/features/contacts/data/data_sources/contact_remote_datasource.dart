@@ -10,12 +10,19 @@ class ContactRemoteDataSource {
     return (response as List).map((e) => ContactModel.fromMap(e)).toList();
   }
 
-  Future<void> addContact(ContactModel contact) async {
-    await client.from('contacts').insert(contact.toMap());
+  Future<ContactModel> addContact(ContactModel contact) async {
+    final inserted = await client.from('contacts').insert(contact.toMap()).select().single();
+    return ContactModel.fromMap(inserted );
   }
 
-  Future<void> updateContact(ContactModel contact) async {
-    await client.from('contacts').update(contact.toMap()).eq('id', contact.id);
+  Future<ContactModel> updateContact(ContactModel contact) async {
+    final updated = await client
+        .from('contacts')
+        .update(contact.toMap())
+        .eq('id', contact.id)
+        .select()
+        .single();
+    return ContactModel.fromMap(updated);
   }
 
   Future<void> deleteContact(String id) async {

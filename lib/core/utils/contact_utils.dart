@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class ContactHelper {
+class ContactUtils {
   static Color avatarColor(String seed) {
     const colors = [
       Colors.green,

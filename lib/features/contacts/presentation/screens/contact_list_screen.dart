@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/utils/contact_helper.dart';
+import '../../../../core/theme/theme_provider.dart';
+import '../../../../core/utils/contact_utils.dart';
+import '../../../../core/utils/dialog_utils.dart';
 import '../../data/models/contact_model.dart';
 import '../providers/contact_provider.dart';
-import 'add_contact_screen.dart';
+import '../widgets/contacts_searchbar_section.dart';
 
 class ContactListScreen extends ConsumerStatefulWidget {
   const ContactListScreen({super.key});
@@ -31,9 +33,7 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
   void _onSearchChanged(String value) {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      setState(() {
-        query = value.toLowerCase();
-      });
+      setState(() => query = value.toLowerCase());
     });
   }
 
@@ -53,101 +53,26 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
   }
 
   void _showSortOptions() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Sort by',
-              style: Theme.of(context).textTheme.titleLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            ...SortOption.values.map(
-              (option) => ListTile(
-                leading: Radio<SortOption>(
-                  value: option,
-                  groupValue: currentSort,
-                  onChanged: (value) {
-                    setState(() {
-                      currentSort = value!;
-                    });
-                    Navigator.pop(context);
-                  },
-                ),
-                title: Text(_getSortTitle(option)),
-                onTap: () {
-                  setState(() {
-                    currentSort = option;
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+    DialogUtils.showSortOptions(
+      context,
+      currentSort: currentSort,
+      onSortSelected: (option) => setState(() => currentSort = option),
     );
-  }
-
-  String _getSortTitle(SortOption option) {
-    switch (option) {
-      case SortOption.name:
-        return 'Name (A-Z)';
-      case SortOption.recent:
-        return 'Recently Added';
-      case SortOption.favorites:
-        return 'Favorites First';
-    }
   }
 
   void _showDeleteConfirmation(ContactModel contact) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Contact'),
-        content: Text('Are you sure you want to delete ${contact.name}?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ref.read(contactProvider.notifier).deleteContact(contact.id);
-              _showSnackBar('${contact.name} deleted');
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    DialogUtils.showDeleteConfirmation(
+      context,
+      contact: contact,
+      onConfirm: () {
+        ref.read(contactProvider.notifier).deleteContact(contact.id);
+        DialogUtils.showSnackBar(context, '${contact.name} deleted');
+      },
     );
-  }
-
-  void _showSnackBar(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
   }
 
   void _editContact(ContactModel contact) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => AddContactScreen(),
-    );
+    DialogUtils.showEditContact(context, contact);
   }
 
   @override
@@ -156,8 +81,20 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('All Contact'),
+        title: const Text('Contacts', style: TextStyle(fontWeight: FontWeight.w400)),
+        centerTitle: true,
         actions: [
+          Consumer(
+            builder: (context, ref, _) {
+              final mode = ref.watch(themeModeProvider);
+              final isDark = mode == ThemeMode.dark;
+              return IconButton(
+                tooltip: isDark ? 'Switch to Light' : 'Switch to Dark',
+                icon: Icon(isDark ? Icons.dark_mode : Icons.light_mode),
+                onPressed: () => ref.read(themeModeProvider.notifier).toggle(),
+              );
+            },
+          ),
           IconButton(
             tooltip: 'Refresh',
             icon: const Icon(Icons.refresh),
@@ -167,49 +104,16 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Row(
-              spacing: 10,
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Search contacts...',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: query.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() {
-                                  query = "";
-                                });
-                              },
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide(color: Colors.grey.shade400),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide(
-                          color: Theme.of(context).colorScheme.primary,
-                          width: 1.2,
-                        ),
-                      ),
-                    ),
-                    onChanged: _onSearchChanged,
-                  ),
-                ),
-                OutlinedButton(onPressed: _showSortOptions, child: const Icon(Icons.sort)),
-              ],
-            ),
+          ContactSearchBar(
+            searchController: _searchController,
+            query: query,
+            currentSort: currentSort,
+            onSearchChanged: _onSearchChanged,
+            onClearSearch: () {
+              _searchController.clear();
+              setState(() => query = "");
+            },
+            onSortPressed: _showSortOptions,
           ),
           Expanded(
             child: contactsState.when(
@@ -226,19 +130,21 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
                       children: [
                         Icon(
                           query.isNotEmpty ? Icons.search_off : Icons.contacts,
-                          size: 64,
-                          color: Colors.grey,
+                          size: 80,
+                          color: Colors.grey.shade400,
                         ),
                         const SizedBox(height: 16),
                         Text(
                           query.isNotEmpty ? "No contacts found for '$query'" : "No contacts yet",
-                          style: const TextStyle(fontSize: 16, color: Colors.grey),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodyLarge?.copyWith(color: Colors.grey),
                         ),
                         if (query.isEmpty) ...[
                           const SizedBox(height: 8),
-                          const Text(
-                            "Tap the + button to add your first contact",
-                            style: TextStyle(color: Colors.grey),
+                          Text(
+                            "Tap + to add your first contact",
+                            style: TextStyle(color: Colors.grey.shade500),
                           ),
                         ],
                       ],
@@ -246,17 +152,18 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
                   );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(8),
+                return ListView.separated(
+                  padding: const EdgeInsets.all(12),
                   itemCount: filtered.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 2),
                   itemBuilder: (context, index) {
                     final contact = filtered[index];
-                    final color = ContactHelper.avatarColor(contact.name);
+                    final color = ContactUtils.avatarColor(contact.name);
 
                     return Dismissible(
                       key: ValueKey(contact.id),
                       background: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        margin: const EdgeInsets.symmetric(vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.redAccent,
                           borderRadius: BorderRadius.circular(16),
@@ -270,111 +177,82 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
                         ),
                       ),
                       direction: DismissDirection.endToStart,
-                      confirmDismiss: (direction) async {
+                      confirmDismiss: (_) async {
                         _showDeleteConfirmation(contact);
                         return false;
                       },
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: color,
-                              foregroundColor: Colors.white,
-                              child: Text(ContactHelper.initials(contact.name)),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          contact.name,
-                                          style: Theme.of(context).textTheme.titleMedium,
-                                        ),
-                                      ),
-                                      if (contact.isFavorite)
-                                        const Icon(Icons.star, size: 16, color: Colors.amber),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    contact.phone,
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context).hintColor,
-                                    ),
-                                  ),
-                                ],
+                      child: Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          leading: CircleAvatar(
+                            backgroundColor: color,
+                            foregroundColor: Colors.white,
+                            child: Text(ContactUtils.initials(contact.name)),
+                          ),
+                          title: Row(
+                            children: [
+                              Expanded(child: Text(contact.name)),
+                              if (contact.isFavorite)
+                                const Icon(Icons.star, size: 18, color: Colors.amber),
+                            ],
+                          ),
+                          subtitle: Text(contact.phone),
+                          trailing: PopupMenuButton<String>(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            onSelected: (value) {
+                              switch (value) {
+                                case 'edit':
+                                  _editContact(contact);
+                                  break;
+                                case 'favorite':
+                                  ref
+                                      .read(contactProvider.notifier)
+                                      .updateContact(
+                                        contact.copyWith(isFavorite: !contact.isFavorite),
+                                      );
+                                  DialogUtils.showSnackBar(
+                                    context,
+                                    contact.isFavorite
+                                        ? '${contact.name} removed from favorites'
+                                        : '${contact.name} added to favorites',
+                                  );
+                                  break;
+                                case 'delete':
+                                  _showDeleteConfirmation(contact);
+                                  break;
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: ListTile(
+                                  leading: Icon(Icons.edit),
+                                  title: Text('Edit'),
+                                  contentPadding: EdgeInsets.zero,
+                                ),
                               ),
-                            ),
-                            PopupMenuButton<String>(
-                              onSelected: (value) {
-                                switch (value) {
-                                  case 'edit':
-                                    _editContact(contact);
-                                    break;
-                                  case 'favorite':
-                                    ref
-                                        .read(contactProvider.notifier)
-                                        .updateContact(
-                                          contact.copyWith(isFavorite: !contact.isFavorite),
-                                        );
-                                    _showSnackBar(
-                                      contact.isFavorite
-                                          ? '${contact.name} removed from favorites'
-                                          : '${contact.name} added to favorites',
-                                    );
-                                    break;
-                                  case 'delete':
-                                    _showDeleteConfirmation(contact);
-                                    break;
-                                }
-                              },
-                              itemBuilder: (context) => [
-                                const PopupMenuItem(
-                                  value: 'edit',
-                                  child: ListTile(
-                                    leading: Icon(Icons.edit),
-                                    title: Text('Edit'),
-                                    contentPadding: EdgeInsets.zero,
+                              PopupMenuItem(
+                                value: 'favorite',
+                                child: ListTile(
+                                  leading: Icon(
+                                    contact.isFavorite ? Icons.star : Icons.star_border,
                                   ),
+                                  title: Text(contact.isFavorite ? 'Unfavorite' : 'Favorite'),
+                                  contentPadding: EdgeInsets.zero,
                                 ),
-                                PopupMenuItem(
-                                  value: 'favorite',
-                                  child: ListTile(
-                                    leading: Icon(
-                                      contact.isFavorite ? Icons.star : Icons.star_border,
-                                    ),
-                                    title: Text(contact.isFavorite ? 'Unfavorite' : 'Favorite'),
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: ListTile(
+                                  leading: Icon(Icons.delete, color: Colors.red),
+                                  title: Text('Delete', style: TextStyle(color: Colors.red)),
+                                  contentPadding: EdgeInsets.zero,
                                 ),
-                                const PopupMenuItem(
-                                  value: 'delete',
-                                  child: ListTile(
-                                    leading: Icon(Icons.delete, color: Colors.red),
-                                    title: Text('Delete', style: TextStyle(color: Colors.red)),
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -396,7 +274,7 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
-                    ElevatedButton(
+                    FilledButton(
                       onPressed: () => ref.read(contactProvider.notifier).fetchContacts(),
                       child: const Text('Retry'),
                     ),
@@ -409,17 +287,8 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
-        label: const Text("Add Contact"),
-        onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            builder: (context) => const AddContactScreen(),
-          );
-        },
+        label: const Text("Add"),
+        onPressed: () => DialogUtils.showAddContact(context),
       ),
     );
   }

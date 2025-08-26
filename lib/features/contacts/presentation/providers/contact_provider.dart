@@ -4,7 +4,7 @@ import '../../data/data_sources/contact_remote_datasource.dart';
 import '../../data/models/contact_model.dart';
 
 final contactProvider = StateNotifierProvider<ContactNotifier, AsyncValue<List<ContactModel>>>(
-  (ref) => ContactNotifier(ContactRemoteDataSource()),
+      (ref) => ContactNotifier(ContactRemoteDataSource()),
 );
 
 class ContactNotifier extends StateNotifier<AsyncValue<List<ContactModel>>> {
@@ -24,17 +24,25 @@ class ContactNotifier extends StateNotifier<AsyncValue<List<ContactModel>>> {
   }
 
   Future<void> addContact(ContactModel contact) async {
-    await remoteDataSource.addContact(contact);
-    fetchContacts();
+    final inserted = await remoteDataSource.addContact(contact);
+    state = state.whenData((list) => [...list, inserted]);
   }
 
   Future<void> updateContact(ContactModel contact) async {
-    await remoteDataSource.updateContact(contact);
-    fetchContacts();
+    final updated = await remoteDataSource.updateContact(contact);
+    state = state.whenData((list) => list
+        .map((c) => c.id == updated.id ? updated : c)
+        .toList());
   }
 
   Future<void> deleteContact(String id) async {
-    await remoteDataSource.deleteContact(id);
-    fetchContacts();
+    final previous = state;
+    state = state.whenData((list) => list.where((c) => c.id != id).toList());
+    try {
+      await remoteDataSource.deleteContact(id);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      state = previous;
+    }
   }
 }
