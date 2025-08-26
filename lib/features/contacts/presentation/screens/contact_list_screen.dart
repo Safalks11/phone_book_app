@@ -83,6 +83,9 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
       appBar: AppBar(
         title: const Text('Contacts', style: TextStyle(fontWeight: FontWeight.w400)),
         centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         actions: [
           Consumer(
             builder: (context, ref, _) {
